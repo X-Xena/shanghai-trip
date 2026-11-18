@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>상하이 3박 4일</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+:root{--bg:#F3F4F7;--surface:#FFFFFF;--fg:#1A2130;--muted:#5D6678;--line:#D9DDE6;--accent:#C2362B;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--bg:#11151D;--surface:#1A202B;--fg:#E8EBF1;--muted:#9AA3B5;--line:#2E3646;--accent:#F0695C;color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.box{width:100%;max-width:320px;display:flex;flex-direction:column;gap:14px;text-align:center}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:600}
+h1{font-family:"Do Hyeon","IBM Plex Sans KR",system-ui,sans-serif;font-weight:400;font-size:40px;margin:0;line-height:1.2}
+h1 span{color:var(--accent)}
+.sub{font-size:13px;color:var(--muted)}
+form{display:flex;gap:8px}
+input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;font:inherit;font-size:22px;letter-spacing:.4em;text-align:center;color:var(--fg)}
+input:focus{border-color:var(--accent);outline:none}
+button{border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:999px;padding:8px 18px;font:inherit;font-size:15px;cursor:pointer}
+button:disabled{opacity:.6}
+.err{font-size:13px;color:var(--accent);font-weight:600;min-height:1.4em}
+.shake{animation:shake .35s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}}
+</style>
+</head>
+<body>
+<div class="box" id="box">
+  <span class="eyebrow">12. 18 — 12. 21</span>
+  <h1>상하이 <span>겨울</span> 여행</h1>
+  <span class="sub" id="sub">비밀번호를 넣어주세요</span>
+  <form id="f" autocomplete="off">
+    <input id="pw" type="password" inputmode="numeric" maxlength="32" aria-label="비밀번호">
+    <button id="go" type="submit">열기</button>
+  </form>
+  <span class="err" id="err" role="status"></span>
+</div>
+<script>
+(function(){
+const P=__PAYLOAD__;
+const b=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function decrypt(pw){
+  const enc=new TextEncoder();
+  const base=await crypto.subtle.importKey('raw',enc.encode(pw),'PBKDF2',false,['deriveKey']);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b(P.s),iterations:P.n,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:b(P.i)},key,b(P.c));
+  return new TextDecoder().decode(pt);
+}
+async function unlock(pw){
+  let html;
+  try{html=await decrypt(pw);}catch(e){return false;}
+  try{localStorage.setItem('sh-pw',pw);localStorage.setItem('sh-unlock','true');}catch(e){}
+  document.open();document.write(html);document.close();
+  return true;
+}
+const f=document.getElementById('f'),pw=document.getElementById('pw'),go=document.getElementById('go'),err=document.getElementById('err'),box=document.getElementById('box');
+f.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const v=pw.value.trim();if(!v)return;
+  go.disabled=true;err.textContent='여는 중…';
+  if(!(await unlock(v))){
+    go.disabled=false;err.textContent='비밀번호가 달라요';pw.value='';
+    box.classList.remove('shake');void box.offsetWidth;box.classList.add('shake');pw.focus();
+  }
+});
+let saved=null;try{saved=localStorage.getItem('sh-pw');}catch(e){}
+if(saved){err.textContent='여는 중…';unlock(saved).then(ok=>{if(!ok){err.textContent='';try{localStorage.removeItem('sh-pw');}catch(e){}pw.focus();}});}
+else pw.focus();
+})();
+</script>
+</body>
+</html>
